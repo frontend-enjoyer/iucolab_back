@@ -1,10 +1,11 @@
 import os
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
-from pydantic import BaseModel, EmailStr, constr, conlist
+from pydantic import BaseModel, EmailStr, constr, conlist, ValidationError
 from typing import List, Optional
 from enum import Enum
 from config import MONGO_URI
+import pytest
 
 app = Flask(__name__)
 client = MongoClient(MONGO_URI)
@@ -163,3 +164,52 @@ def add_event():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+def test_valid_cv_model():
+    valid_data = {
+        "name": "John Doe",
+        "email": "john@example.com",
+        "phone": "1234567890",
+        "summary": "Experienced developer",
+        "experience": "5 years",
+        "education": "Bachelor's degree",
+        "skills": "Python, Java"
+    }
+    cv = CV(**valid_data)
+    assert cv.name == "John Doe"
+    assert cv.email == "john@example.com"
+
+def test_invalid_cv_model():
+    invalid_data = {
+        "name": "John Doe",
+        "email": "invalid_email",
+        "phone": "1234567890"
+    }
+    with pytest.raises(ValidationError):
+        CV(**invalid_data)
+
+def test_valid_event_model():
+    valid_data = {
+        "name": "Hackathon",
+        "description": "A great event",
+        "type": "hackathon",
+        "direction": "backend",
+        "skills": ["python", "java"],
+        "experience_lvl": "junior",
+        "email": "m@example.com",
+    }
+    event = Event(**valid_data)
+    assert event.name == "Hackathon"
+
+def test_invalid_event_model():
+    invalid_data = {
+        "name": "Hackathon",
+        "description": "A great event",
+        "type": "invalid_type",
+        "direction": "backend",
+        "skills": ["python", "java"],
+        "experience_lvl": "junior"
+    }
+    with pytest.raises(ValidationError):
+        Event(**invalid_data)
+
