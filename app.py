@@ -66,20 +66,33 @@ class Event(BaseModel):
     direction: Direction
     skills: List[Skill]
     experience_lvl: ExperienceLevel
-
+    email: EmailStr
 
 # Endpoints for CVs
-@app.route('/api/cvs/<email>', methods=['GET'])
+@app.route('/api/cvs/<email>', methods=['GET', 'DELETE'])
 def get_cvs(email):
-    cvs = list(cv_collection.find({'email': email}, {'_id': 0}))  # Exclude _id from results
-    if len(cvs) == 0:
-        return jsonify({'error': 'No CVs found'}), 404
+    if request.method == 'GET':
+        cvs = list(cv_collection.find({'email': email}, {'_id': 0}))  # Exclude _id from results
+        if len(cvs) == 0:
+            return jsonify({'error': 'No CVs found'}), 404
+        else:
+            return jsonify({
+                'status': 'success',
+                'message': 'CVs retrieved successfully',
+                'data': cvs
+            })
     else:
+        result = cv_collection.delete_many({'email': email})
+    if result.deleted_count > 0:
         return jsonify({
             'status': 'success',
-            'message': 'CVs retrieved successfully',
-            'data': cvs
-        })
+            'message': f'{result.deleted_count} CV(s) deleted successfully'
+        }), 200
+    else:
+        return jsonify({
+            'status': 'error',
+            'message': 'No CVs found for the given email'
+        }), 404
 
 
 @app.route('/api/cvs', methods=['POST'])
@@ -99,34 +112,39 @@ def add_cv():
             'errors': str(e)
         }), 400
 
+# Endpoints for Events
+@app.route('/api/events/<email>', methods=['GET', 'DELETE'])
+def get_events(email):
+    if request.method == 'GET':
+        events = list(event_collection.find({'email': email}, {'_id': 0}))
+        if len(events)>0:
+            return jsonify({
+                'status': 'success',
+                'message': 'Events retrieved successfully',
+                'data': events
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'No events found for the given email'
+            }), 404
 
-@app.route('/api/cvs/<email>', methods=['DELETE'])
-def delete_cvs(email):
-    result = cv_collection.delete_many({'email': email})
+
+    else:
+        result = event_collection.delete_many({'email': email})
     if result.deleted_count > 0:
         return jsonify({
             'status': 'success',
-            'message': f'{result.deleted_count} CV(s) deleted successfully'
+            'message': f'{result.deleted_count} event(s) deleted successfully'
         }), 200
     else:
         return jsonify({
             'status': 'error',
-            'message': 'No CVs found for the given email'
+            'message': 'No events found for the given email'
         }), 404
 
 
-# Endpoints for Events
-@app.route('/api/events/<email>', methods=['GET'])
-def get_events(email):
-    events = list(event_collection.find({'email': email}, {'_id': 0}))  # Exclude _id from results
-    return jsonify({
-        'status': 'success',
-        'message': 'Events retrieved successfully',
-        'data': events
-    })
-
-
-@app.route('/api/events', methods=['POST'])
+@app.route('/api/add_event', methods=['POST'])
 def add_event():
     try:
         data = Event(**request.json)
@@ -142,22 +160,6 @@ def add_event():
             'message': 'Validation failed',
             'errors': str(e)
         }), 400
-
-
-@app.route('/api/events/<email>', methods=['DELETE'])
-def delete_events(email):
-    result = event_collection.delete_many({'email': email})
-    if result.deleted_count > 0:
-        return jsonify({
-            'status': 'success',
-            'message': f'{result.deleted_count} event(s) deleted successfully'
-        }), 200
-    else:
-        return jsonify({
-            'status': 'error',
-            'message': 'No events found for the given email'
-        }), 404
-
 
 if __name__ == '__main__':
     app.run(debug=True)
